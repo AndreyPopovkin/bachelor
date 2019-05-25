@@ -7,14 +7,18 @@ class DataSet:
     
     def __init__(self, count=100, nClasses=10, L=20, alpha_high=1, beta_high=10, scale=30, random_seed=42):
         np.random.seed(seed=random_seed)
-        s = sps.expon.rvs(scale=scale, size=count)
         m = sps.beta.rvs(alpha_high, beta_high, size=count)
+        s = 1.1 / m + sps.expon.rvs(scale=scale, size=count)
         
+        self.L = L
+        self.nClasses = nClasses
+        self.count = count
         self.alpha0 = s * m
         self.beta0 = s * (1 - m)
         self.p = sps.beta.rvs(self.alpha0, self.beta0, size=(nClasses, count)).T
         self.train_data = sps.binom.rvs(n=L, p=self.p)
         self.val_data = sps.binom.rvs(n=L, p=self.p)
+        #self.test_data = sps.binom.rvs(n=L, p=self.p)
         self.ideal = sps.binom.rvs(n=10 ** 6, p=self.p)
         
 def load_data_set(filename):
