@@ -63,7 +63,7 @@ def calibration_curve_solution(train, val, L):
     sum_ab = tg * L - L + 2
     m = ((train + val) / 2 / L).mean()
     if tg != tg or m * sum_ab < 1 or sum_ab > 1e5:
-        return mean_value_solution(train, val, L)
+        return max_loglike_solution(train, val, L)
     
     return bayesian_solve(m * sum_ab, sum_ab * (1 - m), train + val, 2 * L)
     
