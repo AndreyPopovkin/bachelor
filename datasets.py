@@ -5,10 +5,10 @@ import pickle
 
 class DataSet:
     
-    def __init__(self, count=100, nClasses=10, L=20, alpha_high=1, beta_high=10, scale=30, random_seed=42):
+    def __init__(self, count=100, nClasses=10, L=20, alpha_high=1, beta_high=10, lna=4, lnb=1, random_seed=42):
         np.random.seed(seed=random_seed)
         m = sps.beta.rvs(alpha_high, beta_high, size=count)
-        s = 1.1 / m + sps.expon.rvs(scale=scale, size=count)
+        s = np.exp(sps.norm(lna, lnb).rvs(size=count))
         
         self.L = L
         self.nClasses = nClasses
