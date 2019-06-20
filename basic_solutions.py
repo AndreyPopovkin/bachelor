@@ -5,6 +5,8 @@ import scipy.stats as sps
 from matplotlib import pyplot as plt
 
 def cut01(ans):
+    if np.isscalar(ans):
+        return np.clip(ans, 1e-4, 1 - 1e-4)
     ans[ans <= 1e-4] = 1e-4
     ans[ans >= 1 - 1e-4] = 1 - 1e-4
     return ans
@@ -14,6 +16,9 @@ def bayesian_solve(alpha0, beta0, train, L):
     return cut01(ans)
 
 def calc_loglike(p_pred, val, L):
+    if (p_pred >= 1).sum() + (p_pred <= 0).sum() > 0:
+        print (p_pred)
+        print ('aaaaaa!!!!1111')
     return (val * np.log(p_pred)).sum() + ((L - val) * np.log(1 - p_pred)).sum()
 
 def calc_bayesian_solve_loglike(alpha0, beta0, train, val, L, use_prior=False):
@@ -27,12 +32,11 @@ def calc_bayesian_solve_loglike(alpha0, beta0, train, val, L, use_prior=False):
     return ans
 
 def stupid_solution(train, val, L):
-    return (train + val + 1e-4) / 2 / (L + 2e-4)
+    return cut01((train + val) / 2 / L)
 
 def calc_llp(p_pred, train, test, L):
-    p_const = train.sum() / L / train.shape[0]
-    if p_const < 1e-4:
-        p_const = 1e-4
+    p_pred = cut01(p_pred)
+    p_const = cut01(train.sum() / L / train.shape[0])
     return (calc_loglike(p_pred, test, 1e6) - calc_loglike(p_const, test, 1e6)) / 1e6 / test.shape[0]
 
 def evaluate(solution_fun, train, val, test, L):
@@ -41,10 +45,10 @@ def evaluate(solution_fun, train, val, test, L):
         raise Exception("Zero predicted probability")
         
 
-    print ("p_pred", p_pred[:5])
-    print (test[:5] / 1e6)
-    plt.hist(test / 1e6, bins=20, density=True)
-    plt.show()
+    #print ("p_pred", p_pred[:5])
+    #print (test[:5] / 1e6)
+    #plt.hist(test / 1e6, bins=20, density=True)
+    #plt.show()
     return calc_llp(p_pred, train + val, test, 2 * L)
 
 def max_loglike_solution(train, val, L):
@@ -60,8 +64,7 @@ def max_loglike_solution(train, val, L):
     
 def mean_value_solution(train, val, L):
     m = ((train + val) / 2. / L).mean()
-    if m < 1e-4:
-        m = 1e-4
+    m = cut01(m)
     sum_ab = 1 / m * 20
     return bayesian_solve(m * sum_ab, (1 - m) * sum_ab, train + val, 2 * L)
 
@@ -74,16 +77,13 @@ def calibration_curve_solution(train, val, L):
         return max_loglike_solution(train, val, L)
     tg = 1 / line.slope
     sum_ab = tg * L - L + 2
-    #m = ((train + val) / 2 / L).mean()
+    if sum_ab == 0:
+        return max_loglike_solution(train, val, L)
     m = (L * line.intercept / line.slope + 1) / sum_ab
     if tg != tg or m * sum_ab < 1 or sum_ab > 1e5 or m > 1:
         return max_loglike_solution(train, val, L)
     
-    print (m * sum_ab, sum_ab * (1 - m))
-
-    plt.hist((train + val) / L / 2, bins=20, density=True)
     space = np.linspace(0, .2, 100)
-    plt.plot(space, sps.beta(m * sum_ab, sum_ab * (1 - m)).pdf(space))
     return bayesian_solve(m * sum_ab, sum_ab * (1 - m), train + val, 2 * L)
 
 def mean_std_prior(p):
@@ -96,7 +96,7 @@ def mean_std_prior(p):
         return None, None
     return m * sum_ab, (1 - m) * sum_ab
 
-def mean_std_value_solution(train, val, L, iters=10):
+def mean_std_value_solution(train, val, L, iters=2):
     alpha, beta = mean_std_prior((train + val) / 2 / L)
     
     for i in range(iters):
